@@ -36,7 +36,7 @@ const CTASection = () => {
             {/* Description */}
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10">
               Join thousands of content creators who have transformed their workflow with
-              Content Pipeline Studio. Start creating better content, faster.
+              Stratiara. Start creating better content, faster.
             </p>
 
             {/* CTA Buttons */}

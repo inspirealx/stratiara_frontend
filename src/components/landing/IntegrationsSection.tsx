@@ -45,7 +45,7 @@ const IntegrationsSection = () => {
                         Integrate with <span className="bg-gradient-to-r from-primary to-primary/60 text-transparent bg-clip-text">everything.</span>
                     </h2>
                     <p className="text-xl text-muted-foreground">
-                        Connect ContentPipeline Studio directly to the world's best AI models and social platforms.
+                        Connect Stratiara directly to the world's best AI models and social platforms.
                     </p>
                 </motion.div>
 
