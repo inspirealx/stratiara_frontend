@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { Home, PlusCircle, Settings, Clock, LogOut, Zap, BarChart3, ListTodo, Cog, Search, Keyboard, ShieldCheck, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { auth } from '@/lib/auth';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,10 @@ import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { CommandPalette } from '@/components/CommandPalette';
 import { KeyboardShortcutsDialog } from '@/components/KeyboardShortcuts';
+
+// Module-level flag: animation fires only on the very first mount after login.
+// Survives re-renders but resets on full page reload (intentional).
+let hasSidebarAnimated = false;
 
 const navItems = [
   { to: '/dashboard', icon: Home, label: 'Dashboard', end: true },
@@ -22,11 +26,20 @@ const navItems = [
 
 export const Sidebar = () => {
   const navigate = useNavigate();
-  const user = auth.getUser();
   const { user: authUser, logout } = useAuth();
+  // Fallback to lib/auth for display name; role always comes from useAuth (JWT-decoded)
+  const legacyUser = auth.getUser();
+  const displayName = authUser?.name || legacyUser?.name || 'User';
+  const displayEmail = authUser?.email || legacyUser?.email || '';
   const isAdmin = authUser?.role === 'ADMIN';
   const [showCommands, setShowCommands] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+
+  // Play the slide-in animation only once per session (not on every re-render)
+  const shouldAnimate = !hasSidebarAnimated;
+  useEffect(() => {
+    hasSidebarAnimated = true;
+  }, []);
 
   const handleSignOut = () => {
     logout();
@@ -35,7 +48,7 @@ export const Sidebar = () => {
 
   return (
     <motion.aside
-      initial={{ x: -240 }}
+      initial={shouldAnimate ? { x: -240 } : false}
       animate={{ x: 0 }}
       className="fixed left-0 top-0 h-screen w-60 glass-strong border-r border-border/50 flex flex-col z-50"
     >
@@ -137,11 +150,11 @@ export const Sidebar = () => {
       <div className="p-4 border-t border-border/50">
         <div className="flex items-center gap-3 mb-3">
           <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-primary-foreground font-semibold">
-            {user?.name?.charAt(0).toUpperCase() || 'U'}
+            {displayName?.charAt(0).toUpperCase() || 'U'}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-foreground truncate">{user?.name || 'User'}</p>
-            <p className="text-sm text-muted-foreground truncate">{user?.email}</p>
+            <p className="font-medium text-foreground truncate">{displayName}</p>
+            <p className="text-sm text-muted-foreground truncate">{displayEmail}</p>
           </div>
           <ThemeToggle />
         </div>

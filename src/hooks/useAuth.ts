@@ -22,18 +22,28 @@ interface AuthState {
     setAuthFromToken: (token: string) => void;
 }
 
-// Rehydrate user from the stored JWT on every page load (no network call needed)
+// Rehydrate user from the stored JWT on every page load.
+// Also checks the token's expiry claim — if expired, clears it immediately.
 const getInitialUser = (): User | null => {
     const token = localStorage.getItem('token');
     if (!token) return null;
     try {
         const payload = JSON.parse(atob(token.split('.')[1]));
+        // exp is in seconds; Date.now() is in milliseconds
+        if (payload.exp && payload.exp * 1000 < Date.now()) {
+            localStorage.removeItem('token');
+            return null;
+        }
         return { id: payload.userId, email: payload.email, role: payload.role };
     } catch {
+        localStorage.removeItem('token');
         return null;
     }
 };
 
+// Derive initial auth state after the expiry-aware getInitialUser() runs.
+// If getInitialUser() returned null it also cleared localStorage, so
+// localStorage.getItem('token') will already be null at this point.
 export const useAuth = create<AuthState>((set) => ({
     user: getInitialUser(),
     token: localStorage.getItem('token'),
@@ -41,6 +51,8 @@ export const useAuth = create<AuthState>((set) => ({
 
     login: async (email, password) => {
         const data = await api.login(email, password);
+        // Persist token so it survives page refreshes
+        localStorage.setItem('token', data.token);
         set({
             user: data.user,
             token: data.token,
@@ -73,8 +85,13 @@ export const useAuth = create<AuthState>((set) => ({
     checkAuth: () => {
         const token = localStorage.getItem('token');
         if (token) {
-            api.getProfile().then((user) => {
-                set({ user, isAuthenticated: true });
+            api.getProfile().then((profileData) => {
+                // Merge profile data with existing store user so the JWT-decoded
+                // role is preserved even if /profile doesn't return a role field.
+                set((state) => ({
+                    user: { ...state.user, ...profileData },
+                    isAuthenticated: true,
+                }));
             }).catch(() => {
                 set({ user: null, token: null, isAuthenticated: false });
                 localStorage.removeItem('token');
